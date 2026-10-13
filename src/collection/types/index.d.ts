@@ -1,19 +1,33 @@
 import type {
-	Collection,
 	CountDocumentsOptions,
 	DeleteOptions,
 	Db,
+	DeleteResult,
 	Filter,
 	FilterOperators,
 	FindOptions,
+	FindOneAndUpdateOptions,
 	InsertManyResult,
 	InsertOneResult,
 	OptionalUnlessRequiredId,
 	UpdateFilter,
 	UpdateOptions,
+	UpdateResult,
 } from "mongodb";
 
-import type { ZodType } from "zod/v3";
+// -------------------------
+// DOCUMENT
+// -------------------------
+
+export type CollectionDocument<
+	T extends Record<string, unknown>,
+> = T & {
+	_id?: T extends { _id: infer ID } ? ID : unknown;
+};
+
+// -------------------------
+// LIMIT / SORT
+// -------------------------
 
 export type CollectionLimit<T> = {
 	limit?: number;
@@ -22,14 +36,21 @@ export type CollectionLimit<T> = {
 	query?: string;
 };
 
+// -------------------------
+// CONFIG
+// -------------------------
+
 export type CollectionConfig<
 	T extends Record<string, unknown>,
 > = {
 	name: string;
-	schema: ZodType<T>;
 	searchField?: keyof T & string;
 	defaultSortBy?: keyof T & string;
 };
+
+// -------------------------
+// SERVICE
+// -------------------------
 
 export type CollectionService<
 	T extends Record<string, unknown>,
@@ -40,113 +61,109 @@ export type CollectionService<
 
 	all: (
 		options?: CollectionLimit<T>,
-	) => Promise<T[]>;
+	) => Promise<CollectionDocument<T>[]>;
 
 	collection: (
 		options?: CollectionLimit<T>,
-	) => Promise<T[]>;
+	) => Promise<CollectionDocument<T>[]>;
 
-	find: <K extends keyof T & string>(
-		field: K | Filter<T>,
-		filter?: Filter<T>[K],
-		options?: CollectionLimit<T>,
-	) => Promise<T[]>;
+	find: <K extends keyof CollectionDocument<T> & string>(
+		field: K | Filter<CollectionDocument<T>>,
+		filter?: Filter<CollectionDocument<T>>[K],
+		options?: CollectionLimit<CollectionDocument<T>>,
+	) => Promise<CollectionDocument<T>[]>;
 
-	findOne: <K extends keyof T & string>(
-		field: K | Filter<T>,
-		value?: T[K] | FilterOperators<T[K]>,
-		options?: FindOptions<T>,
-	) => Promise<T | null>;
+	findOne: <
+		K extends keyof CollectionDocument<T> & string,
+	>(
+		field: K | Filter<CollectionDocument<T>>,
+		value?:
+			| CollectionDocument<T>[K]
+			| FilterOperators<CollectionDocument<T>[K]>,
+		options?: FindOptions<CollectionDocument<T>>,
+	) => Promise<CollectionDocument<T> | null>;
 
 	// -------------------------
 	// INSERT
 	// -------------------------
 
 	insertOne: (
-		data: OptionalUnlessRequiredId<T>,
+		data: OptionalUnlessRequiredId<
+			CollectionDocument<T>
+		>,
 		options?: Parameters<
-			Collection<T>["insertOne"]
+			Db["collection"]
 		>[1],
-	) => Promise<InsertOneResult<T>>;
+	) => Promise<
+		InsertOneResult<CollectionDocument<T>>
+	>;
 
 	insertMany: (
-		data: OptionalUnlessRequiredId<T>[],
+		data: OptionalUnlessRequiredId<
+			CollectionDocument<T>
+		>[],
 		options?: Parameters<
-			Collection<T>["insertMany"]
+			Db["collection"]
 		>[1],
-	) => Promise<InsertManyResult<T>>;
+	) => Promise<
+		InsertManyResult<CollectionDocument<T>>
+	>;
 
 	create: (
-		data: T,
-	) => Promise<T>;
+		data: OptionalUnlessRequiredId<
+			CollectionDocument<T>
+		>,
+	) => Promise<CollectionDocument<T>>;
 
 	// -------------------------
 	// UPDATE
 	// -------------------------
 
 	updateOne: (
-		filter: Filter<T>,
-		update: UpdateFilter<T>,
+		filter: Filter<CollectionDocument<T>>,
+		update: UpdateFilter<CollectionDocument<T>>,
 		options?: UpdateOptions,
-	) => Promise<
-		Awaited<
-			ReturnType<Collection<T>["updateOne"]>
-		>
-	>;
+	) => Promise<UpdateResult>;
 
 	updateMany: (
-		filter: Filter<T>,
-		update: UpdateFilter<T>,
+		filter: Filter<CollectionDocument<T>>,
+		update: UpdateFilter<CollectionDocument<T>>,
 		options?: UpdateOptions,
-	) => Promise<
-		Awaited<
-			ReturnType<Collection<T>["updateMany"]>
-		>
-	>;
+	) => Promise<UpdateResult>;
 
 	findOneAndUpdate: (
-		filter: Filter<T>,
-		update: UpdateFilter<T>,
-		options?: Parameters<
-			Collection<T>["findOneAndUpdate"]
-		>[2],
-	) => Promise<T | null>;
+		filter: Filter<CollectionDocument<T>>,
+		update: UpdateFilter<CollectionDocument<T>>,
+		options?: FindOneAndUpdateOptions,
+	) => Promise<CollectionDocument<T> | null>;
 
 	// -------------------------
 	// DELETE
 	// -------------------------
 
 	deleteOne: (
-		filter: Filter<T>,
+		filter: Filter<CollectionDocument<T>>,
 		options?: DeleteOptions,
-	) => Promise<
-		Awaited<
-			ReturnType<Collection<T>["deleteOne"]>
-		>
-	>;
+	) => Promise<DeleteResult>;
 
 	deleteMany: (
-		filter: Filter<T>,
+		filter: Filter<CollectionDocument<T>>,
 		options?: DeleteOptions,
-	) => Promise<
-		Awaited<
-			ReturnType<Collection<T>["deleteMany"]>
-		>
-	>;
+	) => Promise<DeleteResult>;
 
 	// -------------------------
 	// COUNT
 	// -------------------------
 
 	countDocuments: (
-		filter?: Filter<T>,
+		filter?: Filter<CollectionDocument<T>>,
 		options?: CountDocumentsOptions,
 	) => Promise<number>;
 
 	estimatedDocumentCount: (
 		options?: Parameters<
-			Collection<T>["estimatedDocumentCount"]
-		>[0],
+			Db["collection"]
+		>[1],
 	) => Promise<number>;
 
 	// -------------------------
@@ -154,9 +171,13 @@ export type CollectionService<
 	// -------------------------
 
 	exists: (
-		filter: Filter<T>,
+		filter: Filter<CollectionDocument<T>>,
 	) => Promise<boolean>;
 };
+
+// -------------------------
+// FACTORY
+// -------------------------
 
 export type CreateServiceFn = (
 	db: Db,
