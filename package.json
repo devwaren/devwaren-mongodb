@@ -1,6 +1,6 @@
 {
   "name": "@dev-waren/mongodb",
-  "version": "1.0.51",
+  "version": "1.0.52",
   "description": "A declarative MongoDB utility package built on the official MongoDB Node.js driver",
   "type": "module",
   "main": "./dist/index.cjs",
